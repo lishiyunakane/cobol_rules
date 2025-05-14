@@ -56,7 +56,8 @@ def pdf_summarize(assistant_id, question):
         time.sleep(1)
 
     messages = client.beta.threads.messages.list(thread_id=thread.id)
-    return messages.data[0].content[0].text.value
+    summary = messages.data[0].content[0].text.value
+    return thread.id, run.id, summary
 
 def save_to_json(content: str, filename: str):
     try:
@@ -69,6 +70,18 @@ def save_to_json(content: str, filename: str):
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print(f"✅ JSON saved to: {filepath}")
+    
+def inspect_run_steps(thread_id, run_id):
+    steps = client.beta.threads.runs.steps.list(thread_id=thread_id, run_id=run_id)
+    print(f"\n🔍 Assistant took {len(steps.data)} step(s).")
+
+    for i, step in enumerate(steps.data, start=1):
+        print(f"\nStep {i}:")
+        print(f"  Type: {step.type}")
+        if step.type == "tool_calls":
+            for tool_call in step.step_details.tool_calls:
+                print(f"  Tool Type: {tool_call.type}")
+                print(f"  Tool Arguments: {tool_call.function.arguments}")
 
 
 if __name__ == "__main__":
@@ -100,6 +113,6 @@ if __name__ == "__main__":
     - Do **not** include any explanations, comments, markdown code fences (like ```), or natural language before or after the JSON.
     - Your output must be valid, parsable JSON **only**.
     """
-
-    summary = pdf_summarize(assistant.id, prompt)
+    thread_id, run_id, summary = pdf_summarize(assistant.id, prompt)
+    inspect_run_steps(thread_id, run_id)
     save_to_json(summary, "coding_kiyaku_4.1mini.json")
