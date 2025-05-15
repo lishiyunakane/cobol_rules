@@ -1,118 +1,133 @@
 import os
-import time
 import json
+import pdfplumber
+from openai import OpenAI
 from dotenv import load_dotenv
-from openai import AzureOpenAI
 
 load_dotenv()
 
-client = AzureOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    api_version="2024-05-01-preview"
-)
+if os.getenv("gpt") is not None:
+    client = OpenAI(api_key=os.getenv("gpt"))
 
-def create_vector_store():
-    return client.beta.vector_stores.create(name="Azure GPT-4.1-mini PDF Store")
+def extract_text_by_page(file_path):
+    page_texts = []
+    with pdfplumber.open(file_path) as pdf:
+        for page_num, page in enumerate(pdf.pages, start=1):
+            text = f"\n--- Page {page_num} ---\n"
 
-def upload_pdf(file_path, vector_store_id):
-    with open(file_path, "rb") as f:
-        file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
-            vector_store_id=vector_store_id,
-            files=[f]
-        )
-    return file_batch
+            tables = page.extract_tables()
+            if tables:
+                for table in tables:
+                    if table and len(table) > 1:
+                        headers = table[0]
+                        text += "| " + " | ".join(headers) + " |\n"
+                        text += "| " + " | ".join(["---"] * len(headers)) + " |\n"
+                        for row in table[1:]:
+                            row_clean = [cell.strip() if cell else "" for cell in row]
+                            text += "| " + " | ".join(row_clean) + " |\n"
+                        text += "\n"
 
-def create_assistant(vector_store_id):
-    assistant = client.beta.assistants.create(
-        name="PDF Summarizer (Azure GPT-4.1-mini)",
-        instructions="You are a helpful assistant that specializes in reading and summarizing PDFs.",
-        model="gpt-4.1-mini",  
-        tools=[{"type": "file_search"}],
-        tool_resources={"file_search": {"vector_store_ids": [vector_store_id]}}
+            page_text_raw = page.extract_text(x_tolerance=1, y_tolerance=1, layout=True)
+            if page_text_raw:
+                text += page_text_raw.strip()
+
+            page_texts.append(text)
+    return page_texts
+
+def remove_known_headers_footers(lines):
+    cleaned_lines = []
+    for line in lines:
+        if any(keyword in line for keyword in [
+            "営業秘密", "E-COBOL コーディング規約書", "発行部署", "発行日", "版数", "改訂日", "文書番号", "印刷日", "第二開一"
+        ]):
+            continue
+        if "Copyright" in line or "NTT DATA CORPORATION" in line:
+            continue
+        cleaned_lines.append(line)
+    return cleaned_lines
+
+def clean_extracted_pages(pages):
+    cleaned = []
+    for page in pages:
+        lines = page.splitlines()
+        lines = [line.strip() for line in lines if line.strip()]
+        lines = remove_known_headers_footers(lines)
+        cleaned.append("\n".join(lines))
+    return cleaned
+
+def batch_pages(pages, batch_size=5):
+    return [pages[i:i+batch_size] for i in range(0, len(pages), batch_size)]
+
+def summarize_batch(batch_text, instruction):
+    clipped_text = "\n\n".join(batch_text)[:6000]
+    full_prompt = f"{instruction}\n\n{clipped_text}"
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[{"role": "user", "content": full_prompt}],
+        temperature=0.2
     )
-    return assistant
+    content = response.choices[0].message.content.strip()
 
-def pdf_summarize(assistant_id, question):
-    thread = client.beta.threads.create()
+    if content.startswith("```json"):
+        content = content[7:]
+    if content.endswith("```"):
+        content = content[:-3]
+    content = content.strip()
 
-    client.beta.threads.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content=question
-    )
-
-    run = client.beta.threads.runs.create(
-        thread_id=thread.id,
-        assistant_id=assistant_id
-    )
-
-    while True:
-        run_status = client.beta.threads.runs.retrieve(thread_id=thread.id, run_id=run.id)
-        if run_status.status == "completed":
-            break
-        elif run_status.status == "failed":
-            raise RuntimeError("Assistant run failed.")
-        time.sleep(1)
-
-    messages = client.beta.threads.messages.list(thread_id=thread.id)
-    summary = messages.data[0].content[0].text.value
-    return thread.id, run.id, summary
-
-def save_to_json(content: str, filename: str):
     try:
-        data = json.loads(content)
+        return json.loads(content)
     except json.JSONDecodeError as e:
-        print("❌ Error: Output is not valid JSON.")
+        print("Error JSON format：", content[:300])
         raise e
 
-    filepath = os.path.join(os.path.dirname(__file__), filename)
+def save_to_json(content, filename="summary.json"):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    filepath = os.path.join(script_dir, filename)
     with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"✅ JSON saved to: {filepath}")
-    
-def inspect_run_steps(thread_id, run_id):
-    steps = client.beta.threads.runs.steps.list(thread_id=thread_id, run_id=run_id)
-    print(f"\n🔍 Assistant took {len(steps.data)} step(s).")
-
-    for i, step in enumerate(steps.data, start=1):
-        print(f"\nStep {i}:")
-        print(f"  Type: {step.type}")
-        if step.type == "tool_calls":
-            for tool_call in step.step_details.tool_calls:
-                print(f"  Tool Type: {tool_call.type}")
-                print(f"  Tool Arguments: {tool_call.function.arguments}")
-
+        json.dump(content, f, ensure_ascii=False, indent=2)
+    print(f"successfully saved JSON：{filename}")
 
 if __name__ == "__main__":
-    file_path = os.path.join(os.path.dirname(__file__), "sample.pdf")
+    pdf_path = os.path.join(os.path.dirname(__file__), "sample.pdf")
 
-    vector_store = create_vector_store()
-    upload_pdf(file_path, vector_store.id)
-
-    assistant = create_assistant(vector_store.id)
+    print("Extracting PDF...")
+    all_pages = extract_text_by_page(pdf_path)
+    cleaned_pages = clean_extracted_pages(all_pages)
+    page_batches = batch_pages(cleaned_pages, batch_size=5)
 
     prompt = """
-    You are an assistant that summarizes coding conventions found in a PDF document. The target is to extract and organize all E-Cobol coding standards described in the file.
+    You are a highly accurate assistant specialized in analyzing technical documents and summarizing programming conventions.
 
-    Please carefully read through the entire PDF and identify each distinct rule or convention related to E-Cobol programming. For each rule you find, extract the following:
+    Your task is to read through the **entire PDF** and extract all coding rules, standards, or best practices related to **E-Cobol programming**.
 
-    - A brief summary of what the rule is about (in your own words)
-    - The original wording of the rule as written in the PDF
-    - One representative example, if any are provided. If no example is given, use an **empty string** ("").
+    For each distinct rule you find, extract the following:
 
-    Output your result strictly as a **JSON array**, where each item follows this exact structure:
-
-    {
-    "rule_title": "Summary of the rule (your wording)",
-    "rule_text": "The original text from the PDF",
-    "example": "One example if provided, otherwise use an empty string \"\""
-    }
+    - "rule_title": A brief summary of what the rule is about (written in your own words, in plain English)
+    - "rule_text": The original expression of the rule as described in the PDF
+    - "example": One representative example if any are provided; if no example exists, set this field to an empty string ""
 
     ⚠️ Very important:
-    - Do **not** include any explanations, comments, markdown code fences (like ```), or natural language before or after the JSON.
-    - Your output must be valid, parsable JSON **only**.
+    - You must carefully read and analyze the entire PDF document, not just retrieve the most relevant sections.
+    - Return your output as a valid JSON array, where each item follows this structure:
+    {
+    "rule_title": "（日本語）",
+    "rule_text": "（日本語原文）",
+    "example": "（日本語例文 or \"\"）"
+    }
+    - Do not include any additional explanation, natural language commentary, or Markdown code fences (like ```).
+    - Your response must be strictly valid JSON and parsable by standard JSON parsers.
+
+    Make sure the output includes all identified rules, even if they are spread across different parts of the PDF.
     """
-    thread_id, run_id, summary = pdf_summarize(assistant.id, prompt)
-    inspect_run_steps(thread_id, run_id)
-    save_to_json(summary, "coding_kiyaku_4.1mini.json")
+
+    print(" GPT に送信して規約を抽出中...")
+    final_results = []
+    for idx, batch in enumerate(page_batches, start=1):
+        print(f"🔄 Batch {idx}/{len(page_batches)}")
+        try:
+            result = summarize_batch(batch, prompt)
+            final_results.extend(result)
+        except Exception as e:
+            print(f" Batch {idx} failed:", e)
+
+    save_to_json(final_results, "summary_gpt4.1mini_all.json")
