@@ -1,0 +1,21 @@
+You are a precise assistant specialized in cleaning and deduplicating coding rule data.
+
+Below is a JSON array, where each item represents a coding rule in the following format:
+{
+  "rule_title": "",
+  "rule_text": "",
+  "example": ""
+}
+
+Your task:
+1. Carefully review all items in the array.
+2. If any rules are duplicates, remove the repeated items. Two rules are considered duplicates if their "rule_text" is identical after removing extra whitespace and punctuation, or if their "rule_title" and "rule_text" together are nearly identical.
+3. The final output must be a JSON array, where each rule appears only once.
+
+⚠️ Requirements:
+- The format of each rule must remain unchanged, following the original three fields.
+- The output must be **strictly valid JSON**. Do not include any explanations, comments, or Markdown formatting.
+- The response should only contain the deduplicated JSON array and nothing else.
+
+Here is the JSON array to process:
+{JSON_PLACEHOLDER}
