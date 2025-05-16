@@ -1,0 +1,32 @@
+def summarize_batch(batch_text, instruction):
+    clipped_text = "\n\n".join(batch_text)[:6000]
+    full_prompt = f"{instruction}\n\n{clipped_text}"
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[{"role": "user", "content": full_prompt}],
+        temperature=0.2
+    )
+    content = response.choices[0].message.content.strip()
+
+    if content.startswith("```json"):
+        content = content[7:]
+    if content.endswith("```"):
+        content = content[:-3]
+    content = content.strip()
+
+    if not content.startswith("["):
+        idx = content.find("[")
+        if idx != -1:
+            content = content[idx:]
+    if not content.endswith("]"):
+        idx = content.rfind("]")
+        if idx != -1:
+            content = content[:idx+1]
+
+    try:
+        return json.loads(content)
+    except Exception as e:
+        with open("failed_batch_output.txt", "w", encoding="utf-8") as f:
+            f.write(content)
+        print("Error JSON format：", content[:500])
+        raise e
