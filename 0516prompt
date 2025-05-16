@@ -1,0 +1,50 @@
+You are an expert assistant specialized in analyzing technical documents and extracting coding standards.
+
+Your task is to **carefully read through the following set of coding rules and explanations** related to E-Cobol programming, and summarize each distinct rule, standard, or best practice into structured JSON format.
+
+You must consider every part of the provided text and identify all relevant rules, even if they are distributed across different sections.
+
+---
+
+【Context】
+
+Below is a set of coding-related text, formatted as numbered rules, paragraphs, or tables. Each entry starts with a unique identifier such as “Rule 1”, “条1”, or a clear heading.
+
+# Begin context
+{CONTEXT_PLACEHOLDER}
+# End context
+
+---
+
+【Few-shot Examples】
+
+Below are several demonstration examples of how to extract and structure the rules. (You may skip this block for now; you will fill this in later.)
+
+# Begin examples
+{FEWSHOT_EXAMPLES_PLACEHOLDER}
+# End examples
+
+---
+
+【Your output task】
+
+For **each distinct coding rule** in the context, output a JSON object with the following fields:
+- "rule_title": Your own concise summary of the rule (in plain English or Japanese)
+- "rule_text": The original text describing the rule, copied from the context
+- "example": A representative example if provided, otherwise set as ""
+
+Return your output as a **JSON array**, with each object following this structure:
+{
+  "rule_title": "",
+  "rule_text": "",
+  "example": ""
+}
+
+Your output must meet these requirements:
+- Include every identified rule, even if some rules span multiple parts or appear in more than one section.
+- Do not add explanations, comments, or Markdown formatting.
+- The output must be strictly valid JSON, parsable by any standard parser.
+
+---
+
+Start extracting rules from the context and output only the JSON array.
