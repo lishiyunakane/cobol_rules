@@ -5,25 +5,24 @@ Please conduct a review of the provided COBOL source code using **only the "codi
 ### # coding_rules
 
 ---
-For the following COBOL source code, provide output in Markdown format using the following **three steps**:
+For the following COBOL source code, provide output in Markdown format using the following **two steps**:
 
-【ステップ 1 — 問題点の列挙】  
-- Check each line based on the rules and examples described in **コーディング規約(coding_rules)**.
-- Also point out duplicate code, non-code characters outside of comments, or any other anomalies.
--  **For each 指摘事項, include the following information:**
+【Step 1 - 問題点の列挙】  
+- Review each line of the COBOL source code based on the rules and examples defined in **coding_rules**.
+- Also point out duplicate code, non-code characters outside of comments, or any other irregularities.
+-  **For each issue, include the following information:**
   - **行番号**  
-  - **問題の説明**（specify which rule/example it violates）
-  - **根拠／理由**（quote the relevant rule or example from the coding_rules）  
+  - **違反のルール**（quote the relevant rule it violates from the coding_rules）  
+Output the results in the following table format:
+| 行番号 | 違反のルール |
+|--------|-------------|
 
-【ステップ 2 — 修正版コードの提示】  
-- Revise only the 指摘 identified in ステップ 1, following the **coding_rules** as strictly as possible.
+
+【Step 2 - 差分パッチ（任意）】  
+- Revise only the issues identified in Step 1, following the **coding_rules** as strictly as possible.
 - Preserve the original **indentation, alignment, and casing** wherever possible, and **limit changes strictly to rule violations**.
-- **Do not change the program logic**—limit edits to format, syntax, and rule compliance only.
-- Present the revised code in a **
-cobol ...
-** code block.  
-
-【ステップ 3 — 差分パッチ（任意）】  
+- **Do not change the program logic**—limit edits to format, syntax, and rule compliance only. (i.e., do not output the full modified code, only the lines changed, as a diff).
+ 
 - If a diff is required, present the modified lines only using **unified diff** format.
 
 **Notes**  
