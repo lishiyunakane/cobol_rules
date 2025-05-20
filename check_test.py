@@ -33,21 +33,23 @@ tools = [
     {
         "type": "function",
         "function": {
-            "name": "get_rule_detail",
-            "description": "Return detailed rule content and example for a given rule ID.",
+            "name": "get_rule_detail_batch",
+            "description": "Return detailed content and example for multiple rule IDs.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "rule_id": {
-                        "type": "string",
-                        "description": "Coding rule ID, e.g. R001",
+                    "rule_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "A list of coding rule IDs, e.g., ['R001', 'R004']"
                     }
                 },
-                "required": ["rule_id"],
-            },
-        },
+                "required": ["rule_ids"]
+            }
+        }
     }
 ]
+
 
 # ---------- Example COBOL source code ----------
 cobol_source = """
