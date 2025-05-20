@@ -1,0 +1,30 @@
+import json
+
+with open('rules.json', 'r', encoding='utf-8') as f:
+    rules = json.load(f)
+
+summary_lines = []
+detail_blocks = []
+
+for i, r in enumerate(rules):
+    rule_id = f"R{str(i+1).zfill(3)}"  # R001, R002, ...
+    summary = r.get('summary', '')
+    content = r.get('content', '')
+    example = r.get('example', '')
+
+    summary_lines.append(f"{i+1}. [{rule_id}] {summary}")
+    detail_blocks.append(f"[{rule_id}]\n【内容】{content}\n【示例】{example}")
+
+summary_table = "\n".join(summary_lines)
+detail_rules = "\n\n".join(detail_blocks)
+
+print("------ summary_table ------")
+print(summary_table)
+print("\n------ detail_rules ------")
+print(detail_rules)
+
+with open('summary_table.txt', 'w', encoding='utf-8') as f:
+    f.write(summary_table)
+
+with open('detail_rules.txt', 'w', encoding='utf-8') as f:
+    f.write(detail_rules)
