@@ -8,18 +8,20 @@ def rule_id(idx: int) -> str:
     """Generate rule ID like R001, R002, etc."""
     return f"R{idx+1:03d}"
 
-def lookup_rule(rule_id: str) -> dict:
-    """Lookup detailed rule content locally; return empty fields if not found"""
-    i = int(rule_id[1:]) - 1
-    if 0 <= i < len(RULES):
-        r = RULES[i]
-        return {
-            "rule_id": rule_id,
-            "summary": r["summary"],
-            "content": r["content"],
-            "example": r["example"],
-        }
-    return {"rule_id": rule_id, "summary": "", "content": "", "example": ""}
+def lookup_rules(rule_ids: list[str]) -> str:
+    """Return structured content for a list of rule IDs"""
+    blocks = []
+    for rule_id in rule_ids:
+        i = int(rule_id[1:]) - 1
+        if 0 <= i < len(RULES):
+            r = RULES[i]
+            block = (
+                f"[{rule_id}]\n"
+                f"【内容】{r['content']}\n"
+                f"【示例】{r['example']}"
+            )
+            blocks.append(block)
+    return "\n\n".join(blocks)
 
 # ---------- Build Summary Table ----------
 summary_table = "\n".join(
@@ -64,14 +66,9 @@ messages = [
     {
         "role": "system",
         "content": (
-            "You are an enterprise COBOL code reviewer. "
-            "First, scan the code using the Coding Rules Summary Table only. "
-            "If you require the full text of any rule, call `get_rule_detail` with the rule_id. "
-            "After all needed details are retrieved, output:\n"
-            "Step 1 → issues table (line, rule_id, reason)\n"
-            "Step 2 → unified diff patch\n"
-            "Step 3 → final corrected COBOL code inside ```cobol ...``` block.\n"
-            "Pay extreme attention to indentation requirements."
+             "You may request multiple rule details by calling `get_rule_detail_batch` with a list of rule IDs."
+
+             "When the rules are returned (in format like [R001] ...), always quote the rule ID like [R004] when identifying violations."
         ),
     },
     {
@@ -93,25 +90,21 @@ while True:
     msg = resp.choices[0].message
     # If the model called a tool:
     if msg.tool_calls:
+    messages.append(msg)  # Add assistant message with tool_calls
         for call in msg.tool_calls:
-            func_name = call.function.name
-            args = json.loads(call.function.arguments)
-            if func_name == "get_rule_detail":
-                rid = args["rule_id"]
-                detail = lookup_rule(rid)
-                # Return the detailed content as a tool response
-                tool_message = {
+            if call.function.name == "get_rule_detail_batch":
+                args = json.loads(call.function.arguments)
+                rule_ids = args["rule_ids"]  # List of rule IDs
+                batch_content = lookup_rules(rule_ids)
+    
+                tool_response = {
                     "tool_call_id": call.id,
                     "role": "tool",
-                    "name": func_name,
-                    "content": (
-                        f"[{detail['rule_id']}]\n"
-                        f"【内容】{detail['content']}\n"
-                        f"【示例】{detail['example']}"
-                    ),
+                    "name": "get_rule_detail_batch",
+                    "content": batch_content
                 }
-                messages.append(msg)          # Log the model’s request
-                messages.append(tool_message) # Log the tool's response
+            messages.append(tool_response)
+
     else:
         # Final model response is ready
         messages.append(msg)
