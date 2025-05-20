@@ -47,6 +47,15 @@ Output the results in the following table format:
  
 - If a diff is required, present the modified lines only using **unified diff** format.
 
+【Step 3 - 修正版コードの出力 / Final Modified COBOL Code】
+
+- Apply all modifications described in Step 2 to the original COBOL source code, based strictly on the corresponding Detailed Rules.
+- Pay special attention to **indentation** (number of spaces per level) and **alignment**. Ensure that every changed line exactly follows the indentation requirements stated in the rules (e.g., 4 spaces per indent if [R002] applies).
+- Only correct the lines and parts indicated in Step 2. Do not introduce any extra formatting changes.
+- Output only the final, fully revised COBOL code after all corrections. The output must be inside a code block formatted as **```cobol ... ```**.
+- Do not include any explanations, diffs, or annotations in this step—only the complete corrected code.
+
+
 **Notes**  
 - The output should be a single Markdown block containing all steps (multiple code blocks are allowed).
 - Do not include test data or runtime output.
