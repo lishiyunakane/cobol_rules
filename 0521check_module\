@@ -1,0 +1,99 @@
+import json, openai
+
+# Load rules
+with open("rules.json", encoding="utf-8") as f:
+    RULES = json.load(f)
+
+def rule_id(idx: int) -> str:
+    return f"R{idx+1:03d}"
+
+BATCH_SIZE = 40
+
+# Your COBOL source code
+cobol_source = """..."""  # Fill in your COBOL code
+
+client = openai.OpenAI()
+
+all_step1_rows = []
+all_step2_diffs = []
+
+for batch_start in range(0, len(RULES), BATCH_SIZE):
+    batch_rules = RULES[batch_start:batch_start+BATCH_SIZE]
+    batch_summary = "\n".join(
+        f"[{rule_id(batch_start+j)}] {r['summary']}" for j, r in enumerate(batch_rules)
+    )
+    rules_text = "\n\n".join(
+        f"[{rule_id(batch_start+j)}]\n内容: {r['content']}\n示例: {r['example']}"
+        for j, r in enumerate(batch_rules)
+    )
+
+    system_prompt = (
+        "You are a COBOL code reviewer. In this task, only use the following coding rules for checking.\n"
+        "Rule Summaries:\n"
+        f"{batch_summary}\n\n"
+        "Rule Details (with examples):\n"
+        f"{rules_text}\n\n"
+        "Always strictly refer to the rules above when identifying and explaining code violations."
+    )
+
+    user_prompt = (
+        "Check the following COBOL source code according to ONLY the rules above.\n"
+        "Output all violations in the following table format:\n"
+        "| 行番号 | 違反のルールID | 違反のルール |\n"
+        "| ------ | ------------- | ------------ |\n"
+        "Also provide a diff patch (```diff block) for all violations found.\n\n"
+        f"{cobol_source}"
+    )
+
+    resp = client.chat.completions.create(
+        model="gpt-4o-2024-05-13",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+    output = resp.choices[0].message.content
+
+    # --- Parse Step1 Table ---
+    step1_rows = []
+    for line in output.splitlines():
+        if line.strip().startswith("|") and not "------" in line:
+            cols = [c.strip() for c in line.strip().split("|")[1:-1]]
+            if len(cols) == 3 and cols[0].isdigit():
+                step1_rows.append(tuple(cols))
+
+    # --- Parse Step2 diff ---
+    diff_blocks = []
+    in_diff = False
+    diff_block = []
+    for line in output.splitlines():
+        if line.strip().startswith("```diff"):
+            in_diff = True
+            diff_block = []
+            continue
+        if in_diff:
+            if line.strip().startswith("```"):
+                in_diff = False
+                if diff_block:
+                    diff_blocks.append("\n".join(diff_block))
+            else:
+                diff_block.append(line)
+
+    all_step1_rows.extend(step1_rows)
+    all_step2_diffs.extend(diff_blocks)
+
+# ----------- Merge and Output --------------
+
+# Merge and sort Step1 table (deduplicate and sort by line number/rule ID)
+all_step1_rows = sorted(
+    set(all_step1_rows),
+    key=lambda row: (int(row[0]), row[1])
+)
+
+print("【Step1 - 問題点の列挙】\n| 行番号 | 違反のルールID | 違反のルール |\n| ------ | ------------- | ------------ |")
+for row in all_step1_rows:
+    print("| {} | {} | {} |".format(*row))
+
+print("\n【Step2 - 差分パッチ（修正例）】")
+for diff in all_step2_diffs:
+    print("```diff\n" + diff + "\n```")
