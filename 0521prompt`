@@ -1,0 +1,18 @@
+Step 2 - Diff Patch (Required)
+
+- For each correction, output a diff as a separate code block using ```diff ... ``` format.
+- For each `-` line (deletion), the indentation, alignment, and all whitespace **must be exactly as in the original COBOL code**.
+- For each `+` line (addition), the indentation, alignment, and whitespace should be according to the rule’s requirement:
+    - If the rule requires a change in indentation, reflect the new indentation in the `+` line.
+    - If the rule only requires a code fix without indentation change, keep the indentation as in the original line.
+- Only include the minimum lines needed to show the change. Do not include extra context lines unless required for clarity.
+- Each code block must only include a single change location (all related lines grouped).
+- **Do not output explanations, patch headers, or the entire modified file.**
+- Repeat this code block format for each correction.
+
+Example:
+```diff
+-      PERFORM ITF1-READ-RTN
+-      PERFORM ITF2-READ-RTN
++           PERFORM ITF1-READ-RTN.
++           PERFORM ITF2-READ-RTN.
