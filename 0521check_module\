@@ -17,6 +17,12 @@ client = openai.OpenAI()
 all_step1_rows = []
 all_step2_diffs = []
 
+def extract_first_line_number(diff_block):
+    m = re.search(r'^@@\s*-(\d+)', diff_block, re.MULTILINE)
+    if m:
+        return int(m.group(1))
+    return 99999999
+
 for batch_start in range(0, len(RULES), BATCH_SIZE):
     batch_rules = RULES[batch_start:batch_start+BATCH_SIZE]
     batch_summary = "\n".join(
@@ -89,11 +95,15 @@ all_step1_rows = sorted(
     set(all_step1_rows),
     key=lambda row: (int(row[0]), row[1])
 )
+sorted_diff_blocks = sorted(
+    all_step2_diffs,
+    key=extract_first_line_number
+)
 
 print("【Step1 - 問題点の列挙】\n| 行番号 | 違反のルールID | 違反のルール |\n| ------ | ------------- | ------------ |")
 for row in all_step1_rows:
     print("| {} | {} | {} |".format(*row))
 
 print("\n【Step2 - 差分パッチ（修正例）】")
-for diff in all_step2_diffs:
+for diff in sorted_diff_blocks:
     print("```diff\n" + diff + "\n```")
