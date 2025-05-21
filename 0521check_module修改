@@ -15,70 +15,39 @@ cobol_source = """..."""  # Put your COBOL code here
 client = openai.OpenAI()
 
 all_step1_rows = []
-all_v4a_patches = []
+all_diff_blocks = []
 
-def parse_v4a_patches(output):
+def parse_diff_blocks_by_codeblock(output):
     """
-    Extract all V4A patch blocks from the model output, returning a list of patch block strings.
+    Extract each diff block (delimited by ```diff ... ```) as a multi-line string.
+    Returns a list of diff block strings.
     """
-    patches = []
-    current = []
-    in_patch = False
-    for line in output.splitlines():
-        if line.strip().startswith("*** Update File:"):
-            in_patch = True
-            current = [line]
-        elif in_patch and line.strip().startswith("*** End Patch"):
-            current.append(line)
-            patches.append('\n'.join(current))
-            in_patch = False
-        elif in_patch:
-            current.append(line)
-    return patches
+    pattern = r"```diff\s*\n(.*?)```"
+    return re.findall(pattern, output, re.DOTALL)
 
-def apply_v4a_patch_to_code(code, v4a_patch):
+def apply_simple_diff_blocks(src_code, diff_blocks):
     """
-    Apply a single V4A patch block to the COBOL code string (in memory).
-    Only supports a single patch block per call.
+    Apply all diff blocks to the code string.
+    Each block: contiguous -/+ lines.
+    For each block, strictly find the sequence of '-' lines in code and replace as a group with the sequence of '+' lines.
     """
-    # Extract the body of the patch between @@ and *** End Patch
-    m = re.search(r'\*\*\* Update File:.*?\n@@[^\n]*\n(.*?)\*\*\* End Patch', v4a_patch, re.DOTALL)
-    if not m:
-        return code
-    patch_body = m.group(1)
-    lines = patch_body.splitlines()
-    context_before, minus_lines, plus_lines, context_after = [], [], [], []
-    phase = 'context_before'
-    for l in lines:
-        if l.startswith('-'):
-            phase = 'minus'
-            minus_lines.append(l[1:].lstrip())
-        elif l.startswith('+'):
-            phase = 'plus'
-            plus_lines.append(l[1:].lstrip())
-        elif l.strip() == '':
-            continue
-        elif phase == 'minus' or phase == 'plus':
-            phase = 'context_after'
-            context_after.append(l.lstrip())
-        else:
-            context_before.append(l.lstrip())
-
-    # Find the matching original segment in the code
-    src_lines = code.splitlines()
-    for i in range(len(src_lines) - len(context_before + minus_lines + context_after) + 1):
-        window = src_lines[i : i + len(context_before + minus_lines + context_after)]
-        if (
-            window[:len(context_before)] == context_before
-            and window[len(context_before):len(context_before) + len(minus_lines)] == minus_lines
-            and window[-len(context_after):] == context_after if context_after else True
-        ):
-            # Build the new segment to replace the old one
-            new_block = context_before + plus_lines + context_after
-            src_lines = src_lines[:i] + new_block + src_lines[i + len(context_before + minus_lines + context_after):]
-            return '\n'.join(src_lines)
-    print("[WARN] Could not apply V4A patch block. Patch:\n", v4a_patch)
-    return code
+    code_lines = src_code.splitlines()
+    for block in diff_blocks:
+        minus_lines = [l[1:].rstrip() for l in block.splitlines() if l.startswith('-')]
+        plus_lines = [l[1:].rstrip() for l in block.splitlines() if l.startswith('+')]
+        n = len(minus_lines)
+        found = False
+        # Scan code for exact matching minus block
+        for i in range(len(code_lines) - n + 1):
+            window = [line.rstrip() for line in code_lines[i:i+n]]
+            if window == minus_lines:
+                # Replace minus_lines with plus_lines
+                code_lines = code_lines[:i] + plus_lines + code_lines[i+n:]
+                found = True
+                break
+        if not found:
+            print("[WARN] Could not apply diff block:\n", block)
+    return '\n'.join(code_lines)
 
 for batch_start in range(0, len(RULES), BATCH_SIZE):
     batch_rules = RULES[batch_start:batch_start+BATCH_SIZE]
@@ -90,21 +59,18 @@ for batch_start in range(0, len(RULES), BATCH_SIZE):
         for j, r in enumerate(batch_rules)
     )
 
-    # V4A patch format example in the user prompt
+    # Prompt model to output each correction in a separate diff code block
     user_prompt = (
         "Check the following COBOL source code according to ONLY the rules above.\n"
         "Output all violations in the following table format:\n"
         "| Line Number | Rule ID | Rule Description |\n"
         "| ------ | ----------- | ---------------- |\n"
-        "For each correction, output a patch in the following V4A format (do not output explanations, only patches):\n"
-        "*** Update File: main.cobol\n"
-        "@@ \n"
-        " IDENTIFICATION DIVISION.\n"
-        "-PROGRAM-ID. OLDPROG.\n"
-        "+PROGRAM-ID. NEWPROG.\n"
-        " DATA DIVISION.\n"
-        "*** End Patch\n"
-        "Repeat this format for each correction, and do not provide the entire modified code.\n\n"
+        "For each correction, output the diff as a separate code block using ```diff ... ``` format. "
+        "Each code block should only include one change location, using '-' (delete) and '+' (add) lines. "
+        "Do not output explanations, patch headers, or the entire modified code. "
+        "For example:\n\n"
+        "```diff\n-OLD LINE\n+NEW LINE\n```\n"
+        "```diff\n-FOO\n+BAR\n```\n"
         f"{cobol_source}"
     )
 
@@ -126,7 +92,7 @@ for batch_start in range(0, len(RULES), BATCH_SIZE):
     )
     output = resp.choices[0].message.content
 
-    # --- Parse Step1 Table (optional, keep as needed) ---
+    # --- Parse Step1 Table (optional) ---
     step1_rows = []
     for line in output.splitlines():
         if line.strip().startswith("|") and not "------" in line:
@@ -135,17 +101,17 @@ for batch_start in range(0, len(RULES), BATCH_SIZE):
                 step1_rows.append(tuple(cols))
     all_step1_rows.extend(step1_rows)
 
-    # --- Parse and Apply V4A patches ---
-    patch_blocks = parse_v4a_patches(output)
-    for patch in patch_blocks:
-        cobol_source = apply_v4a_patch_to_code(cobol_source, patch)
-    all_v4a_patches.extend(patch_blocks)
+    # --- Parse and Apply diff code blocks ---
+    diff_blocks = parse_diff_blocks_by_codeblock(output)
+    cobol_source = apply_simple_diff_blocks(cobol_source, diff_blocks)
+    all_diff_blocks.extend(diff_blocks)
 
 # The final corrected COBOL code string
 print("【Final Corrected COBOL Code】\n")
 print(cobol_source)
 
-print("\n【All V4A Patch Records】\n")
-for patch in all_v4a_patches:
-    print(patch)
-    print("="*40)
+print("\n【All Diff Code Blocks】\n")
+for block in all_diff_blocks:
+    print("```diff")
+    print(block)
+    print("```\n" + "="*40)
