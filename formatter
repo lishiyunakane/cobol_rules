@@ -1,0 +1,76 @@
+import os
+
+def format_cobol_code(input_path, output_path):
+    A_REGION = (7, 11)    # 8〜11桁目（Python index）
+    B_REGION = (11, 72)   # 12〜72桁目
+
+    with open(input_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    fixed_lines = []
+
+    for idx, line in enumerate(lines):
+        line = line.rstrip("\n")
+        code = line
+
+        # コメント行
+        if len(code) > 0 and code.lstrip().startswith("*"):
+            fixed_lines.append(code)
+            continue
+
+        stripped = code.strip()
+        fixed_line = code  # デフォルトは変更なし
+
+        if re.match(r'^(IF|ELSE|END-IF|EVALUATE|WHEN|END-EVALUATE|PERFORM|END-PERFORM|ADD|SUBTRACT|MULTIPLY|DIVIDE|COMPUTE|STRING|END-STRING|ON SIZE ERROR|NOT ON SIZE ERROR|ON OVERFLOW)', stripped):
+            keyword = stripped.split()[0]
+            if keyword in {'IF', 'ELSE', 'END-IF', 'EVALUATE', 'WHEN', 'END-EVALUATE', 'PERFORM', 'END-PERFORM',
+                           'ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'COMPUTE', 'STRING', 'END-STRING',
+                           'ON', 'NOT'}:
+                indent = 11  # column 12
+            else:
+                indent = 14  # column 15
+            fixed_code = ' ' * indent + stripped
+            fixed_line = fixed_code.ljust(72)
+        elif stripped:
+            fixed_code = ' ' * 14 + stripped  # デフォルトの命令文
+            fixed_line = fixed_code.ljust(72)
+
+        fixed_lines.append(fixed_line)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(fixed_lines))
+
+    return output_path
+
+# テスト実行用（仮のファイルパス）
+input_test_path = "/mnt/data/sample_cobol_input.cbl"
+output_test_path = "/mnt/data/sample_cobol_output.cbl"
+
+# ダミーのサンプルコード書き込み（行番号なし）
+sample_code = """
+* コメント
+IDENTIFICATION DIVISION.
+PROGRAM-ID. SAMPLE.
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01 A PIC 9(4).
+01 B PIC 9(4).
+PROCEDURE DIVISION.
+IF A > B
+MOVE A TO B
+END-IF
+PERFORM CALC-ROUTINE
+END-PERFORM
+"""
+
+with open(input_test_path, "w", encoding="utf-8") as f:
+    f.write(sample_code.strip())
+
+# 関数実行
+format_cobol_code(input_test_path, output_test_path)
+
+# 結果表示
+with open(output_test_path, "r", encoding="utf-8") as f:
+    formatted_result = f.read()
+
+formatted_result
