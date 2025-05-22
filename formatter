@@ -1,46 +1,38 @@
 import os
 
-def format_cobol_code(input_path, output_path):
-    A_REGION = (7, 11)    # 8〜11桁目（Python index）
-    B_REGION = (11, 72)   # 12〜72桁目
-
-    with open(input_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-
+def format_cobol_code_from_text_with_procedure_scope(code_text: str) -> str:
+    lines = code_text.strip().split('\n')
     fixed_lines = []
+    in_procedure_division = False
 
-    for idx, line in enumerate(lines):
+    for line in lines:
         line = line.rstrip("\n")
-        code = line
+        stripped = line.strip()
 
-        # コメント行
-        if len(code) > 0 and code.lstrip().startswith("*"):
-            fixed_lines.append(code)
+        # コメント行や PROCEDURE DIVISION. より前はそのまま出力
+        if stripped.startswith("*") or not in_procedure_division:
+            fixed_lines.append(line)
+            if stripped.upper() == "PROCEDURE DIVISION.":
+                in_procedure_division = True
             continue
 
-        stripped = code.strip()
-        fixed_line = code  # デフォルトは変更なし
-
+        # フォーマッタ対象行（PROCEDURE DIVISION以降）
         if re.match(r'^(IF|ELSE|END-IF|EVALUATE|WHEN|END-EVALUATE|PERFORM|END-PERFORM|ADD|SUBTRACT|MULTIPLY|DIVIDE|COMPUTE|STRING|END-STRING|ON SIZE ERROR|NOT ON SIZE ERROR|ON OVERFLOW)', stripped):
             keyword = stripped.split()[0]
-            if keyword in {'IF', 'ELSE', 'END-IF', 'EVALUATE', 'WHEN', 'END-EVALUATE', 'PERFORM', 'END-PERFORM',
-                           'ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'COMPUTE', 'STRING', 'END-STRING',
-                           'ON', 'NOT'}:
-                indent = 11  # column 12
+            if keyword in {'IF', 'ELSE', 'END-IF', 'EVALUATE', 'WHEN', 'END-EVALUATE',
+                           'PERFORM', 'END-PERFORM', 'ADD', 'SUBTRACT', 'MULTIPLY',
+                           'DIVIDE', 'COMPUTE', 'STRING', 'END-STRING', 'ON', 'NOT'}:
+                indent = 11  # column 12 開始
             else:
-                indent = 14  # column 15
-            fixed_code = ' ' * indent + stripped
-            fixed_line = fixed_code.ljust(72)
-        elif stripped:
-            fixed_code = ' ' * 14 + stripped  # デフォルトの命令文
-            fixed_line = fixed_code.ljust(72)
+                indent = 14  # column 15 開始（条件句など）
+            fixed_line = (' ' * indent + stripped).ljust(72)
+        else:
+            # 通常の命令文（MOVEなど）
+            fixed_line = (' ' * 14 + stripped).ljust(72)
 
         fixed_lines.append(fixed_line)
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(fixed_lines))
-
-    return output_path
+    return "\n".join(fixed_lines)
 
 # テスト実行用（仮のファイルパス）
 input_test_path = "/mnt/data/sample_cobol_input.cbl"
