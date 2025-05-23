@@ -1,0 +1,92 @@
+import json
+import re
+from openai import OpenAI
+from pathlib import Path
+
+def check_cbl_code(code: str) -> str:
+    """
+    Fully integrated COBOL indentation checker and corrector.
+    Takes COBOL source code (as string), returns corrected code (as string),
+    and saves output files: cobol_formatted.cbl, suggestions.json
+    """
+
+    # Init OpenAI client
+    client = OpenAI()
+
+    # === 1. Split header and procedure section
+    lines = code.splitlines(keepends=True)
+    for idx, ln in enumerate(lines):
+        if re.search(r"\bPROCEDURE\s+DIVISION\b", ln, flags=re.IGNORECASE):
+            header = lines[:idx + 1]
+            proc = lines[idx + 1:]
+            break
+    else:
+        print("No PROCEDURE DIVISION found.")
+        return code
+
+    # === 2. Convert procedure section to JSON
+    proc_json = []
+    for i, raw in enumerate(proc, start=1):
+        leading = len(raw) - len(raw.lstrip(" "))
+        col = leading + 1  # columns are 1-based
+        proc_json.append({
+            "line_number": i,
+            "suggested_col": col,  # just for reference
+            "code": raw.rstrip("\n\r")
+        })
+
+    # === 3. Build prompt
+    user_prompt = (
+        "You are a COBOL code style checker.\n"
+        "Your task is to analyze indentation based on logical structure.\n"
+        "Input JSON contains line_number, suggested_col (current), and code.\n"
+        "Return a JSON array of only the lines that need fixing:\n"
+        "Each item must include: line_number, suggested_col, reason.\n"
+        f"\nProcedure JSON:\n{json.dumps(proc_json, ensure_ascii=False, indent=2)}"
+    )
+
+    system_prompt = "You are a COBOL indentation linter that returns JSON suggestions."
+
+    # === 4. Call GPT
+    response = client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0.0
+    )
+
+    content = response.choices[0].message.content.strip()
+    suggestions = json.loads(content)
+
+    # Save suggestion file
+    with open("suggestions.json", "w", encoding="utf-8") as f:
+        json.dump(suggestions, f, ensure_ascii=False, indent=2)
+
+    if not suggestions:
+        print("All lines follow the rule.")
+        return code
+
+    # === 5. Apply suggested indentation
+    suggestion_map = {s["line_number"]: s for s in suggestions}
+    corrected_proc = []
+
+    for i, raw in enumerate(proc, start=1):
+        if i in suggestion_map:
+            col = suggestion_map[i]["suggested_col"]
+            body = raw.lstrip(" ")
+            fixed_line = " " * (col - 1) + body
+            corrected_proc.append(fixed_line if fixed_line.endswith("\n") else fixed_line + "\n")
+        else:
+            corrected_proc.append(raw)
+
+    # === 6. Combine and save
+    corrected_code = "".join(header + corrected_proc)
+
+    Path("output").mkdir(exist_ok=True)
+    with open("output/cobol_formatted.cbl", "w", encoding="utf-8") as f:
+        f.write(corrected_code)
+
+    print("✅ COBOL code formatted and saved.")
+    return corrected_code
