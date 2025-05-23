@@ -14,19 +14,34 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 MODEL_NAME = "gpt-4o-mini"  # or gpt-4o / gpt-4o-mini / gpt-4-1106-preview, etc.
 
-SUGGESTION_SCHEMA = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "required": ["line_number", "corrected_indent", "reason"],
-        "properties": {
-            "line_number": {"type": "integer", "minimum": 1},
-            "corrected_indent": {"type": "integer", "minimum": 0},
-            "reason": {"type": "string"},
-        },
-        "additionalProperties": False,
-    },
+response_format={
+    "type": "json_schema",
+    "json_schema": {
+        "name": "indentation_suggestions",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "line_number": {"type": "integer"},
+                            "corrected_indent": {"type": "integer"},
+                            "reason": {"type": "string"}
+                        },
+                        "required": ["line_number", "corrected_indent", "reason"],
+                        "additionalProperties": False
+                    }
+                }
+            },
+            "required": ["suggestions"],
+            "additionalProperties": False
+        }
+    }
 }
+
 # ------------------- helpers ------------------- #
 
 
