@@ -50,9 +50,35 @@ Specific indentation rules:
 - END-STRING: column 12
 
 Special structures:
-- For lines like PERFORM UNTIL A = 5 AND B = 10, treat this as a single line starting at column 12.
-- The inner block after such lines should begin at column 15.
-- WHEN inside EVALUATE that is itself inside PERFORM should be indented to column 18.
+Special structures (fixed indentation rules):
+
+1. COPY ... REPLACING structure:
+   - The COPY keyword should appear at column 12.
+   - The REPLACING keyword should appear at column 17.
+   - This is a fixed pair structure with 5 spaces indentation between COPY and REPLACING.
+
+2. PERFORM TEST BEFORE ... UNTIL ... AND ... structure:
+   - TEST BEFORE appears at column 12.
+   - UNTIL condition starts at column 20.
+   - AND condition (continuation of UNTIL) starts at column 23.
+   - UNTIL and AND must align with TEST's structure, not treated as new blocks.
+   - Example:
+     ```
+     PERFORM
+        TEST BEFORE
+           UNTIL A = B
+              AND C = D
+     ```
+
+3. WHEN inside EVALUATE, which is inside PERFORM:
+   - EVALUATE starts at column 12
+   - WHEN starts at column 12 (same level as EVALUATE)
+   - Statement inside WHEN starts at column 15
+   - If this entire block is inside a PERFORM, indent all of it by 3 more spaces:
+     - EVALUATE: 15
+     - WHEN: 15
+     - Statement inside WHEN: 18
+
 
 Output format:
 For each line that violates the indentation rule, return an object with:
