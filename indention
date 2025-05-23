@@ -1,0 +1,181 @@
+import json
+import os
+import re
+from pathlib import Path
+from typing import List, Dict, Tuple
+
+import openai
+from dotenv import load_dotenv
+from jsonschema import validate, ValidationError
+
+# ------------------- configuration ------------------- #
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+MODEL_NAME = "gpt-4o-mini"  # or gpt-4o / gpt-4o-mini / gpt-4-1106-preview, etc.
+
+SUGGESTION_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "required": ["line_number", "corrected_indent", "reason"],
+        "properties": {
+            "line_number": {"type": "integer", "minimum": 1},
+            "corrected_indent": {"type": "integer", "minimum": 0},
+            "reason": {"type": "string"},
+        },
+        "additionalProperties": False,
+    },
+}
+# ------------------- helpers ------------------- #
+
+
+def split_header_procedure(lines: List[str]) -> Tuple[List[str], List[str]]:
+    """
+    Return (header_lines, procedure_lines) where header is EVERYTHING
+    up to and including the first line that contains 'PROCEDURE DIVISION'.
+    If not found, entire file is treated as header, procedure_lines = [].
+    """
+    for idx, ln in enumerate(lines):
+        if re.search(r"\bPROCEDURE\s+DIVISION\b", ln, flags=re.IGNORECASE):
+            # keep the PROCEDURE DIVISION line inside header, but we want to
+            # start linting from the NEXT line
+            return lines[: idx + 1], lines[idx + 1 :]
+    return lines, []
+
+
+def procedure_to_json(proc_lines: List[str]) -> List[Dict]:
+    """
+    Convert procedure section to JSON list:
+    [
+      {"line_number": 1, "current_indent": 6, "code": "IF X = 1"},
+      ...
+    ]
+    """
+    result = []
+    for i, raw in enumerate(proc_lines, start=1):
+        # Count leading spaces (tabs are treated as 1 char; ideally file is spaces only)
+        leading_spaces = len(raw) - len(raw.lstrip(" "))
+        # strip trailing newline (but leave interior spaces untouched)
+        result.append(
+            {
+                "line_number": i,
+                "current_indent": leading_spaces,
+                "code": raw.rstrip("\n\r"),
+            }
+        )
+    return result
+
+
+def ask_gpt_for_indent_fixes(proc_json: List[Dict]) -> List[Dict]:
+    """Call OpenAI Chat Completion, expecting it to return suggestion list."""
+    system_prompt = (
+        "You are a COBOL code style linter. "
+        "Indentation rule: exactly 3 spaces per nesting level. "
+        "For each line that breaks this rule, output an object with "
+        "`line_number`, `corrected_indent`, and `reason`.\n"
+        "Do NOT output anything else."
+    )
+    user_prompt = (
+        "Here is the PROCEDURE DIVISION section in JSON format.\n\n"
+        f"{json.dumps(proc_json, ensure_ascii=False, indent=2)}\n\n"
+        "Return a JSON array in the STRICT schema below.  "
+        "If all lines already follow the rule, return an empty array [] only.\n\n"
+        "Schema:\n"
+        "{\n"
+        '  "line_number": integer (1-based),\n'
+        '  "corrected_indent": integer (desired leading spaces),\n'
+        '  "reason": string\n'
+        "}"
+    )
+
+    response = openai.ChatCompletion.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.0,
+    )
+    text = response.choices[0].message.content.strip()
+    try:
+        suggestions = json.loads(text)
+        validate(suggestions, SUGGESTION_SCHEMA)
+    except (json.JSONDecodeError, ValidationError) as e:
+        raise RuntimeError(f"GPT returned invalid JSON or schema mismatch: {e}\nRaw: {text}")
+
+    return suggestions
+
+
+def apply_indent_suggestions(
+    proc_lines: List[str], suggestions: List[Dict]
+) -> List[str]:
+    """
+    Adjust leading spaces according to GPT suggestions.
+    The suggestions list is assumed validated.
+    """
+    # Build a mapping line_no -> suggestion
+    suggestion_map = {s["line_number"]: s for s in suggestions}
+
+    new_lines = []
+    for idx, raw in enumerate(proc_lines, start=1):
+        if idx not in suggestion_map:
+            new_lines.append(raw)
+            continue
+
+        s = suggestion_map[idx]
+        # Replace leading spaces with corrected_indent spaces
+        body = raw.lstrip(" ")
+        fixed_line = " " * s["corrected_indent"] + body
+        new_lines.append(fixed_line)
+    return new_lines
+
+
+def save_fixed_file(
+    header_lines: List[str], corrected_proc_lines: List[str], original_path: Path
+) -> Path:
+    target = original_path.with_name(original_path.stem + "_fixed" + original_path.suffix)
+    with target.open("w", encoding="utf-8", newline="") as f:
+        f.writelines(header_lines)
+        for ln in corrected_proc_lines:
+            f.write(ln if ln.endswith("\n") else ln + "\n")
+    return target
+
+
+# ------------------- main driver ------------------- #
+def fix_cobol_indentation(cobol_path: str) -> Path:
+    src = Path(cobol_path)
+    if not src.exists():
+        raise FileNotFoundError(src)
+
+    lines = src.read_text(encoding="utf-8", errors="ignore").splitlines(keepends=True)
+    header, proc = split_header_procedure(lines)
+
+    if not proc:
+        print("No PROCEDURE DIVISION found. Nothing to do.")
+        return src
+
+    proc_json = procedure_to_json(proc)
+    suggestions = ask_gpt_for_indent_fixes(proc_json)
+
+    if not suggestions:
+        print("All lines already follow the 3-space rule. No changes made.")
+        return src
+
+    corrected_proc = apply_indent_suggestions(proc, suggestions)
+    fixed_file = save_fixed_file(header, corrected_proc, src)
+    print(f"Fixed file written to: {fixed_file}")
+    return fixed_file
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Auto-fix COBOL indentation (3-space rule).")
+    parser.add_argument("file", help="Path to .cbl or .cob COBOL program")
+    args = parser.parse_args()
+
+    try:
+        fix_cobol_indentation(args.file)
+    except Exception as exc:
+        print(f"ERROR: {exc}")
