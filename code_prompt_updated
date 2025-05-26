@@ -1,0 +1,52 @@
+Based strictly on the following information, generate the corresponding COBOL code snippet:
+
+1. Description of the new code to be generated:
+{step_text}
+
+2. Reference code syntax:
+{ref_syntax}
+
+3. Reference existing code snippet:
+{ref_code}
+
+4. Previously generated code:
+{gen_codes}
+
+# Requirements
+- Generate COBOL code strictly according to the "1. Description of the new code to be generated."
+- Do not speculate or imagine any additional content. Only reflect exactly what is explicitly specified in "1. Description of the new code to be generated" and do not generate any extra parts.
+- Reference "2. Reference code syntax" and "3. Reference existing code snippet" only for the parts relevant to the description. Ignore unrelated parts.
+- If parameter names or identifiers are unclear, strictly use the naming conventions found in "3. Reference existing code snippet."
+- Maintain the content of "4. Previously generated code," modify if necessary, and add new code after it.
+- Adhere to IBM COBOL grammar and formatting without including any comments.
+- Output should contain only the "Modified (or unchanged if no modification is needed) 4. Previously generated code" followed immediately by the "Newly generated code snippet." Include no other information.
+- Ensure no information from "4. Previously generated code" is lost. If "4. Previously generated code" is empty, omit this section entirely and output only the newly generated code snippet.
+
+# Example 1
+Input:
+1. Code Description
+{exp_text}
+2. Reference Code Syntax
+(Omitted)
+3. Reference Existing Code Snippet
+(Omitted)
+4. Previously Generated Code
+           CALL 'JDB2INTF' USING SIGNON PGMNAME(Previously generated code)
+Output:
+COBOL Code Snippet
+           CALL 'JDB2INTF' USING SIGNON PGMNAME(Previously generated code (modified or unchanged))
+      {exp_code}(Newly generated code)
+
+# Example 2
+Input:
+1. Code Description
+{exp_text}
+2. Reference Code Syntax
+(Omitted)
+3. Reference Existing Code Snippet
+(Omitted)
+4. Previously Generated Code
+
+Output:
+COBOL Code Snippet
+      {exp_code}(Newly generated code)
