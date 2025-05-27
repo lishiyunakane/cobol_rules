@@ -1,0 +1,27 @@
+import json
+
+def update_rule_fields(rule_json_path, updates):
+    with open(rule_json_path, "r", encoding="utf-8") as f:
+        rules = json.load(f)
+
+    for update in updates:
+        start, end = update["range"]
+        chapter = update["chapter"]
+        category = update["category"]
+
+        for rule in rules:
+            rule_id = int(rule.get("id", "0"))
+            if start <= rule_id <= end:
+                rule["chapter"] = chapter
+                rule["category"] = category
+
+    with open(rule_json_path, "w", encoding="utf-8") as f:
+        json.dump(rules, f, ensure_ascii=False, indent=2)
+
+
+if __name__ == "__main__":
+    updates = [
+        {"range": (8, 12), "chapter": "1.1", "category": "Instruction"},
+        {"range": (20, 25), "chapter": "2.2", "category": "Control Statement"},
+    ]
+    update_rule_fields("rule_extended.json", updates)
