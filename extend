@@ -5,12 +5,22 @@ def extend_rule_json(input_path, output_path):
     with open(input_path, "r", encoding="utf-8") as f:
         rules = json.load(f)
 
-    for rule in rules:
-        rule.setdefault("check_id", "")
-        rule.setdefault("category", "")
+
+    new_rules = []
+    for idx, rule in enumerate(rules, start=1):
+        new_rule = {
+            "id": str(idx), 
+            "chapter": "",  
+            "category": "", 
+            "check_id": "" 
+        }
+
+        new_rule.update(rule)
+        new_rules.append(new_rule)
 
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(rules, f, ensure_ascii=False, indent=2)
+        json.dump(new_rules, f, ensure_ascii=False, indent=2)
+
 
 if __name__ == "__main__":
     extend_rule_json("rule.json", "rule_extended.json")
