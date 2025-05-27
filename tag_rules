@@ -177,9 +177,16 @@ def tag_rules(
             mapping[best_id].append(rule_id)
             if update_rules:
                 rule["check_id"] = best_id
+                category_val = None
+                try:
+                    category_val = df[df["id"] == best_id].iloc[0].get("category", None)
+                except Exception:
+                    category_val = None
+                rule["category"] = category_val
         else:
             if update_rules:
                 rule["check_id"] = None
+                rule["category"] = None 
 
     # 5. Save outputs
     if update_rules:
