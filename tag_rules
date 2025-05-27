@@ -1,0 +1,225 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+tag_rules.py  ────────────────────────────────────────────────────────────────
+Map COBOL business rules (rule.json) to checklist items (checklist.xlsx)
+so that each *rule* gets **exactly one** checklist tag, while a checklist can
+correspond to multiple rules.
+
+Pipeline
+━━━━━━━━━
+1. Load rule.json and checklist.xlsx.
+2. Pre‑compute embeddings for checklist items (cached on disk).
+3. For every rule:
+   3.1  Compute embedding.
+   3.2  Retrieve top‑k candidates (cosine similarity).
+   3.3  Send *one* ChatCompletion request with rule text + candidates and let
+        the model pick the single best checklist id (or NONE).
+4. Build mapping_table {check_id: [rule_id, …]}  and (optionally) insert
+   "check_id" field into each rule.
+5. Save updated rule file and mapping table.
+
+Requirements
+━━━━━━━━━━━━
+- Python ≥3.9
+- openai, pandas, numpy, scikit‑learn, tqdm
+
+Usage
+━━━━━
+$ python tag_rules.py rule.json checklist.xlsx \
+      --openai-key $OPENAI_API_KEY \
+      --output-rule tagged_rules.json \
+      --mapping mapping_table.json \
+      --topk 5 --threshold 0.55 --update-rules
+
+Set environment variable OPENAI_API_KEY or pass --openai-key explicitly.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import numpy as np
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+from tqdm import tqdm
+
+try:
+    import openai
+except ImportError:
+    print("[!] openai package not found. Install via `pip install openai`.")
+    sys.exit(1)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Configuration
+# ────────────────────────────────────────────────────────────────────────────
+EMBED_MODEL = "text-embedding-3-small"  # OpenAI embedding model
+CHAT_MODEL = "gpt-3.5-turbo"            # cheaper than GPT‑4 for scoring
+CACHE_DIR = Path.cwd() / ".cache_embeddings"
+CACHE_DIR.mkdir(exist_ok=True)
+
+SYSTEM_PROMPT = (
+    "あなたは熟練したCOBOLコードレビュアーです。次に示す業務規約(Rule)に対し、"
+    "候補リスト(Candidates)の中から最も適合する Checklist 番号を1つだけ選んで下さい。"
+    "該当するものが無ければ NONE と答えて下さい。出力は Checklist 番号1語、あるいは文字列 'NONE' のみとします。"
+)
+
+# ────────────────────────────────────────────────────────────────────────────
+# Embedding helpers (with local cache)
+# ────────────────────────────────────────────────────────────────────────────
+
+def _cache_path(key: str) -> Path:
+    safe = key.replace(os.sep, "_")
+    return CACHE_DIR / f"{safe}.json"
+
+
+def get_embedding(text: str, model: str, *, api_key: str) -> List[float]:
+    """Fetch embedding with local file cache to save tokens/cost."""
+    cache_file = _cache_path(f"{model}_{hash(text)}")
+    if cache_file.exists():
+        return json.loads(cache_file.read_text())
+
+    openai.api_key = api_key
+    resp = openai.Embedding.create(model=model, input=text)
+    emb = resp["data"][0]["embedding"]
+    cache_file.write_text(json.dumps(emb))
+    return emb
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# ChatCompletion scoring (single best selection)
+# ────────────────────────────────────────────────────────────────────────────
+
+def choose_checklist(
+    rule_txt: str,
+    candidates: List[Tuple[str, str]],  # list of (id, item_text)
+    api_key: str,
+    model: str = CHAT_MODEL,
+) -> str | None:
+    """Ask the chat model to pick the best checklist id or NONE."""
+    lines = [f"{i+1}. {cid}: {citem}" for i, (cid, citem) in enumerate(candidates)]
+    prompt_user = (
+        "Rule:\n" + rule_txt.strip() + "\n\n" + "Candidates:\n" + "\n".join(lines)
+    )
+
+    openai.api_key = api_key
+    resp = openai.ChatCompletion.create(
+        model=model,
+        temperature=0,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt_user},
+        ],
+    )
+    answer = resp.choices[0].message.content.strip().upper()
+    if answer == "NONE":
+        return None
+    return answer.split()[0]  # in case model returned id + extra words
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Main tagging logic
+# ────────────────────────────────────────────────────────────────────────────
+
+def tag_rules(
+    rule_path: Path,
+    checklist_path: Path,
+    output_rule: Path,
+    mapping_path: Path,
+    api_key: str,
+    top_k: int = 5,
+    thresh: float = 0.55,
+    update_rules: bool = False,
+):
+    # 1. Load files
+    rules = json.loads(Path(rule_path).read_text(encoding="utf-8"))
+    df = pd.read_excel(checklist_path)
+
+    # basic validation
+    if not {"id", "item"}.issubset(df.columns):
+        raise ValueError("checklist.xlsx必须包含列 'id' 和 'item'")
+
+    # 2. Prepare checklist embeddings matrix
+    cl_embeddings = []
+    for item in tqdm(df["item"], desc="Checklist embeddings"):
+        cl_embeddings.append(get_embedding(item, EMBED_MODEL, api_key=api_key))
+    cl_embeddings = np.vstack(cl_embeddings)  # shape (n_check, dim)
+
+    # Precompute norms for cosine similarity speed‑up
+    cl_norms = np.linalg.norm(cl_embeddings, axis=1, keepdims=True)
+
+    # 3. Iterate rules
+    mapping: Dict[str, List[str]] = {cid: [] for cid in df["id"]}
+
+    for idx, rule in tqdm(list(enumerate(rules)), desc="Tagging rules"):
+        rule_id = rule.get("id", f"RULE{idx:03d}")
+        text_for_emb = rule.get("rule_title", "") + "\n" + rule.get("rule_text", "")
+        r_emb = np.array(get_embedding(text_for_emb, EMBED_MODEL, api_key=api_key))
+        r_norm = np.linalg.norm(r_emb)
+
+        # cosine similarities to all checklist items
+        sims = (cl_embeddings @ r_emb) / (cl_norms.flatten() * r_norm + 1e-8)
+        top_idx = sims.argsort()[-top_k:][::-1]
+        candidates = [
+            (df.iloc[i]["id"], df.iloc[i]["item"]) for i in top_idx if sims[i] >= thresh
+        ]
+        if not candidates:
+            best_id = None  # below threshold
+        else:
+            best_id = choose_checklist(text_for_emb, candidates, api_key)
+
+        # 4. update data structures
+        if best_id:
+            mapping[best_id].append(rule_id)
+            if update_rules:
+                rule["check_id"] = best_id
+        else:
+            if update_rules:
+                rule["check_id"] = None
+
+    # 5. Save outputs
+    if update_rules:
+        output_rule.write_text(json.dumps(rules, ensure_ascii=False, indent=2))
+    mapping_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=2))
+    print(f"[✓] Saved mapping to {mapping_path.relative_to(Path.cwd())}")
+    if update_rules:
+        print(f"[✓] Updated rules written to {output_rule.relative_to(Path.cwd())}")
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# CLI
+# ────────────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(description="Tag COBOL rules with checklist IDs (single‑label)")
+    parser.add_argument("rule_json", type=Path, help="Path to rule.json")
+    parser.add_argument("checklist_xlsx", type=Path, help="Path to checklist.xlsx")
+    parser.add_argument("--output-rule", type=Path, default=Path("tagged_rules.json"))
+    parser.add_argument("--mapping", type=Path, default=Path("mapping_table.json"))
+    parser.add_argument("--openai-key", type=str, default=os.getenv("OPENAI_API_KEY"))
+    parser.add_argument("--topk", type=int, default=5)
+    parser.add_argument("--threshold", type=float, default=0.55)
+    parser.add_argument("--update-rules", action="store_true", help="Write check_id back into rule file")
+    args = parser.parse_args()
+
+    if not args.openai_key:
+        parser.error("OpenAI API key must be supplied via --openai-key or environment variable OPENAI_API_KEY")
+
+    tag_rules(
+        args.rule_json,
+        args.checklist_xlsx,
+        args.output_rule,
+        args.mapping,
+        api_key=args.openai_key,
+        top_k=args.topk,
+        thresh=args.threshold,
+        update_rules=args.update_rules,
+    )
+
+
+if __name__ == "__main__":
+    main()
