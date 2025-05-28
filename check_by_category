@@ -33,73 +33,72 @@ USER_TEMPLATE = """【Rules List】
 {rules_text}
 
 【COBOL Source】
-```cobol
+cobol
 {code_block}
 """
 
------------- Function to create rules text for prompt ------------
+# ------------ Function to create rules text for prompt ------------
 def make_rules_text(rules):
-return "\n\n".join(
-f"[{r['id']}] {r['rule_title']}\n内容: {r['rule_text']}\n例: {r['example']}"
-for r in rules
-)
+    return "\n\n".join(
+        f"[{r['id']}] {r['rule_title']}\n内容: {r['rule_text']}\n例: {r['example']}"
+        for r in rules
+    )
 
------------- Function to call GPT API with retry mechanism ------------
+# ------------ Function to call GPT API with retry mechanism ------------
 def gpt_review(system_prompt, user_prompt, model=GPT_MODEL, max_retry=5):
-for attempt in range(max_retry):
-try:
-response = openai.ChatCompletion.create(
-model=model,
-temperature=0,
-messages=[
-{"role": "system", "content": system_prompt},
-{"role": "user", "content": user_prompt},
-],
-)
-return response["choices"][0]["message"]["content"]
-except RateLimitError:
-wait = 2 ** attempt
-print(f"[⚠] RateLimitError, wait {wait}s and retry...")
-time.sleep(wait)
-except Exception as e:
-print(f"[❌] Other error: {e}")
-time.sleep(2)
-print("[❌] Failed after retries, skip this batch.")
-return "Failed after retries"
+    for attempt in range(max_retry):
+        try:
+            response = openai.ChatCompletion.create(
+                model=model,
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            return response["choices"][0]["message"]["content"]
+        except RateLimitError:
+            wait = 2 ** attempt
+            print(f"[⚠] RateLimitError, wait {wait}s and retry...")
+            time.sleep(wait)
+        except Exception as e:
+            print(f"[❌] Other error: {e}")
+            time.sleep(2)
+    print("[❌] Failed after retries, skip this batch.")
+    return "Failed after retries"
 
------------- Main review function: process COBOL code by chapter ------------
+# ------------ Main review function: process COBOL code by chapter ------------
 def review_by_chapter(cobol_code):
-reports = []
-for chapter, rules in rules_by_chapter.items():
-# Process rules in batches (e.g., 20 per batch)
-for i in range(0, len(rules), BATCH_SIZE):
-sub_rules = rules[i:i + BATCH_SIZE]
-rules_text = make_rules_text(sub_rules)
-system_prompt = SYSTEM_TEMPLATE.format(
-chapter=chapter,
-category_focus=sub_rules[0].get("category", "N/A"),
-)
-user_prompt = USER_TEMPLATE.format(
-rules_text=rules_text,
-code_block=cobol_code
-)
-print(f"[🔍] Checking {chapter} batch {i+1}-{i+len(sub_rules)}...")
-result_md = gpt_review(system_prompt, user_prompt)
-reports.append({
-"chapter": chapter,
-"batch": f"{i+1}-{i+len(sub_rules)}",
-"result": result_md
-})
-return reports
+    reports = []
+    for chapter, rules in rules_by_chapter.items():
+        # Process rules in batches (e.g., 20 per batch)
+        for i in range(0, len(rules), BATCH_SIZE):
+            sub_rules = rules[i:i + BATCH_SIZE]
+            rules_text = make_rules_text(sub_rules)
+            system_prompt = SYSTEM_TEMPLATE.format(
+                chapter=chapter,
+                category_focus=sub_rules[0].get("category", "N/A"),
+            )
+            user_prompt = USER_TEMPLATE.format(
+                rules_text=rules_text,
+                code_block=cobol_code
+            )
+            print(f"[🔍] Checking {chapter} batch {i+1}-{i+len(sub_rules)}...")
+            result_md = gpt_review(system_prompt, user_prompt)
+            reports.append({
+                "chapter": chapter,
+                "batch": f"{i+1}-{i+len(sub_rules)}",
+                "result": result_md
+            })
+    return reports
 
------------- Entry point ------------
-if name == "main":
-# Load COBOL source code
-cobol_code = Path(COBOL_CODE_PATH).read_text(encoding="utf-8")
-# Perform review
-review_results = review_by_chapter(cobol_code)
-# Save the report
-with open(OUTPUT_REPORT, "w", encoding="utf-8") as f:
-json.dump(review_results, f, ensure_ascii=False, indent=2)
-print(f"[✅] Review complete. Results saved to {OUTPUT_REPORT}")
-
+# ------------ Entry point ------------
+if __name__ == "__main__":
+    # Load COBOL source code
+    cobol_code = Path(COBOL_CODE_PATH).read_text(encoding="utf-8")
+    # Perform review
+    review_results = review_by_chapter(cobol_code)
+    # Save the report
+    with open(OUTPUT_REPORT, "w", encoding="utf-8") as f:
+        json.dump(review_results, f, ensure_ascii=False, indent=2)
+    print(f"[✅] Review complete. Results saved to {OUTPUT_REPORT}")
