@@ -12,7 +12,7 @@ import glob
 #     print(f"已从 {txt_input_path} 还原为 {output_7z_path}")
 
 
-with open("0805.zip", "wb") as fout:
+with open("doc.7z", "wb") as fout:
     for binfile in sorted(glob.glob("./chunk_*.txt")):
         print(binfile)
         with open(binfile, "r", encoding="utf-8") as f:

@@ -1,7 +1,7 @@
 import glob
 import os
 
-num_files = 26
+num_files = 1
 
 # 删除所有现有的 chunk_*.txt 文件
 for file in glob.glob("chunk_*.txt"):
