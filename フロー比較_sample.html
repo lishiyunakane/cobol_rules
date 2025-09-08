@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>フロー比較_sample.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="%E4%BB%B6%E5%90%8D%E7%8F%BE%E8%A1%8C%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0%E3%81%A8%E6%AC%A1%E6%9C%9F%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0%E3%81%AE%E3%83%95%E3%83%AD%E3%83%BC%E6%AF%94%E8%BC%83%E5%88%86%E6%9E%90%E3%83%AC%E3%83%9D%E3%83%BC%E3%83%88">件名：現行システムと次期システムのフロー比較分析レポート</h1>
+<pre><code class="language-mermaid"><div class="mermaid">graph TD
+  subgraph 現行フロー
+    direction LR
+    c_in1[MIS.BBD.CSVPRM_TALZMTK]
+    c_in2[HJED00.MIDSKMF2]
+    c_job[JIDTKM21_008]
+    c_out[FTP.S.MU.FSIMUMLF]
+    c_u1[JIDTKM21_010]
+    c_d1[FTP.S.CM.FSICM068]
+    c_u2[JIDTKM22_002]
+    c_d2[FTPMIS.S.MU.FSIMUGY5]
+    c_in1 --> c_job
+    c_in2 --> c_job
+    c_job --> c_out
+    c_out --> c_u1
+    c_u1 --> c_d1
+    c_out --> c_u2
+    c_u2 --> c_d2
+  end
+  subgraph 次期フロー
+    direction LR
+    n_in1[TMUBTCMISM10329]
+    n_in2[TMUBTCMISM10330]
+    n_sql[SQL_01_to_SQL_09]
+    n_out[TMUBTMMISM10043]
+    n_in1 --> n_sql
+    n_in2 --> n_sql
+    n_sql --> n_out
+  end
+  c_job -.-> n_sql
+  c_out -.-> n_out
+</div></code></pre>
+<h2 id="%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB">はじめに</h2>
+<p>本レポートは、現行システムのフロー定義を記述した <code>FTP.S.MU.FSIMUMLF_flow.html</code> と、次期システムのフロー定義を記述した <code>query_TMUBTMMISM10043_flow.html</code> を用いて、両者が同一の業務ロジックを処理するにあたり、成果物や技術基盤、可視化手法などの相違点を明確に比較・分析することを目的としています。</p>
+<hr>
+<h2 id="3-%E3%83%95%E3%83%AD%E3%83%BC%E6%AF%94%E8%BC%83%E4%B8%80%E8%A6%A7">3. フロー比較一覧</h2>
+<h3 id="31-%E6%88%90%E6%9E%9C%E7%89%A9">3.1 成果物</h3>
+<table>
+<thead>
+<tr>
+<th>現行システム</th>
+<th>次期システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>出力成果物として、<code>FTP.S.MU.FSIMUMLF</code> データセット（DASD上の属性情報テーブル）を生成</td>
+<td>出力成果物として、<code>TMUBTMMISM10043</code> テーブル（当行企業属性情報）を生成</td>
+</tr>
+<tr>
+<td>証跡（必須）</td>
+<td>現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_FTP_S_MU_FSIMUMLF</code><br>次期: query_TMUBTMMISM10043_flow.html / <code>TMUBTMMISM10043</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-%E6%8A%80%E8%A1%93%E5%9F%BA%E7%9B%A4">3.2 技術基盤</h3>
+<table>
+<thead>
+<tr>
+<th>現行システム</th>
+<th>次期システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COBOL ジョブ（JCL）上で、<code>IKJEFT01</code> や <code>ICEGENER</code> ユーティリティを利用して一括処理を実行</td>
+<td>RDBMS 上で、<code>SQL_01</code>～<code>SQL_09</code> の個別ステップとして PL/SQL 処理を実行</td>
+</tr>
+<tr>
+<td>証跡（必須）</td>
+<td>現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_JIDTKM21_008</code><br>次期: query_TMUBTMMISM10043_flow.html / <code>SQL_01</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-%E3%83%AD%E3%82%B8%E3%83%83%E3%82%AF%E3%81%AE%E9%80%8F%E6%98%8E%E6%80%A7">3.3 ロジックの透明性</h3>
+<table>
+<thead>
+<tr>
+<th>現行システム</th>
+<th>次期システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COBOL プログラムが monolithic かつブラックボックス的に動作し、内部処理の可視化が困難</td>
+<td>各 <code>SQL_01</code>～<code>SQL_09</code> ステップがモジュール化され、処理ごとにログや中間データを確認可能</td>
+</tr>
+<tr>
+<td>証跡（必須）</td>
+<td>現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_JIDTKM21_008</code><br>次期: query_TMUBTMMISM10043_flow.html / <code>SQL_07</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-%E5%85%A5%E5%8A%9B%E3%83%87%E3%83%BC%E3%82%BF%E3%82%BD%E3%83%BC%E3%82%B9">3.4 入力データソース</h3>
+<table>
+<thead>
+<tr>
+<th>現行システム</th>
+<th>次期システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>単一の入力データセットとして <code>FTP.S.MU.FSIMUMLF</code> を直接参照</td>
+<td>複数のテーブル（例：<code>TMUBTZMISD10166</code>、<code>TMUBTZMISD10167</code> など）を段階的に統合</td>
+</tr>
+<tr>
+<td>証跡（必須）</td>
+<td>現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_FTP_S_MU_FSIMUMLF</code><br>次期: query_TMUBTMMISM10043_flow.html / <code>TMUBTZMISD10166</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="35-%E3%83%95%E3%83%AD%E3%83%BC%E3%81%AE%E5%8F%AF%E8%A6%96%E5%8C%96">3.5 フローの可視化</h3>
+<table>
+<thead>
+<tr>
+<th>現行システム</th>
+<th>次期システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vis.js を用いた階層型ネットワーク図で、DS→JOB の直線的フローを表示</td>
+<td>Vis.js を用いた階層型ネットワーク図で、SQL ステップとテーブルノードを多層的に表示</td>
+</tr>
+<tr>
+<td>証跡（必須）</td>
+<td>現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_MIS_BBD_CSVPRM_TALZMTK_</code><br>次期: query_TMUBTMMISM10043_flow.html / <code>SQL_03</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="36-%E4%BF%9D%E5%AE%88%E6%80%A7%E3%81%A8%E6%8B%A1%E5%BC%B5%E6%80%A7">3.6 保守性と拡張性</h3>
+<table>
+<thead>
+<tr>
+<th>現行システム</th>
+<th>次期システム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新規機能追加時に COBOL/JCL の修正が必要で、リリースサイクルが長期化しやすい</td>
+<td>RDBMS の SQL スクリプト追加のみで拡張可能で、デプロイ迅速化が期待できる</td>
+</tr>
+<tr>
+<td>証跡（必須）</td>
+<td>現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_JIDTKM22_002</code><br>次期: query_TMUBTMMISM10043_flow.html / <code>SQL_09</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="%E6%AF%94%E8%BC%83%E3%81%A8%E8%80%83%E5%AF%9F%E5%87%A6%E7%90%86%E6%96%B9%E5%BC%8F%E3%81%AE%E7%9B%B4%E6%8E%A5%E6%AF%94%E8%BC%83">比較と考察：処理方式の直接比較</h2>
+<ol>
+<li>
+<p><strong>データ変換ロジック</strong><br>
+現行システムでは、<code>JIDTKM21</code> ジョブ（ID: <code>N_JIDTKM21_008</code>）上で COBOL プログラムとユーティリティ（<code>IKJEFT01</code>／<code>GALSV01</code>）を一括実行し、内部処理がブラックボックス化されている。一方、次期システムでは、<code>SQL_01</code>～<code>SQL_09</code> の各ステップを個別に実行し、段階的にデータ変換を行うモジュール化パイプラインを採用している。<br>
+証跡（必須）: 現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_JIDTKM21_008</code>; 次期: query_TMUBTMMISM10043_flow.html / <code>SQL_01</code></p>
+</li>
+<li>
+<p><strong>データ統合プロセス</strong><br>
+現行システムでは、単一ファイルベースの入力（<code>FTP.S.MU.FSIMUMLF</code>）を冒頭で取り込み、処理全体を通して一貫して利用する。次期システムでは、<code>TMUBTZMISD10166</code> など複数ソースから段階的にデータを抽出・統合し、各 SQL ステップで必要なサブセットを結合する方式を採用している。<br>
+証跡（必須）: 現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_FTP_S_MU_FSIMUMLF</code>; 次期: query_TMUBTMMISM10043_flow.html / <code>TMUBTZMISD10166</code></p>
+</li>
+<li>
+<p><strong>デバッグおよび検証手法</strong><br>
+現行システムは最終成果物出力後の検証（ブラックボックステスト）中心であり、中間処理の可視化や部分検証が困難。次期システムは各 SQL ステップ実行後にワークテーブルを介して中間データを検査できるため、ステップ単位のデバッグと検証が容易である。<br>
+証跡（必須）: 現行: FTP.S.MU.FSIMUMLF_flow.html / <code>N_JIDTKM21_010</code>; 次期: query_TMUBTMMISM10043_flow.html / <code>TMUWTMMISD10128</code></p>
+</li>
+</ol>
+
+</body>
+</html>
