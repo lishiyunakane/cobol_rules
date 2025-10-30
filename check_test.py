@@ -92,20 +92,20 @@ while True:
     msg = resp.choices[0].message
     # If the model called a tool:
     if msg.tool_calls:
-    messages.append(msg)  # Add assistant message with tool_calls
+        messages.append(msg)  # Add assistant message with tool_calls
         for call in msg.tool_calls:
             if call.function.name == "get_rule_detail_batch":
                 args = json.loads(call.function.arguments)
                 rule_ids = args["rule_ids"]  # List of rule IDs
                 batch_content = lookup_rules(rule_ids)
-    
+
                 tool_response = {
                     "tool_call_id": call.id,
                     "role": "tool",
                     "name": "get_rule_detail_batch",
                     "content": batch_content
                 }
-            messages.append(tool_response)
+                messages.append(tool_response)
 
     else:
         # Final model response is ready
