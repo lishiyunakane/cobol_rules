@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="850" viewBox="0 0 1480 850" font-family="'Hiragino Kaku Gothic ProN','Yu Gothic','Meiryo','Noto Sans JP','Noto Sans CJK JP',sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L8 5 L1 9" fill="none" stroke="#8A95A3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="ahk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1 L8 5 L1 9" fill="none" stroke="#1D9E75" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1480" height="850" fill="#FFFFFF"/>
+
+  <!-- Title -->
+  <text x="60" y="60" font-size="28" font-weight="700" fill="#2C2C2A">(3) 実現方式</text>
+
+  <!-- ============ ARROWS (drawn first, under boxes) ============ -->
+  <g fill="none" stroke="#8A95A3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- top row -->
+    <line x1="218" y1="156" x2="252" y2="156" marker-end="url(#ah)"/>
+    <line x1="418" y1="156" x2="462" y2="156" marker-end="url(#ah)"/>
+    <!-- middle row -->
+    <line x1="218" y1="416" x2="252" y2="416" marker-end="url(#ah)"/>
+    <line x1="418" y1="416" x2="452" y2="416" marker-end="url(#ah)"/>
+    <line x1="618" y1="416" x2="652" y2="416" marker-end="url(#ah)"/>
+    <line x1="818" y1="416" x2="852" y2="416" marker-end="url(#ah)"/>
+    <line x1="1018" y1="416" x2="1052" y2="416" marker-end="url(#ah)"/>
+    <line x1="1218" y1="416" x2="1252" y2="416" marker-end="url(#ah)"/>
+    <!-- existing-design split -->
+    <line x1="214" y1="612" x2="252" y2="586" marker-end="url(#ah)"/>
+    <line x1="214" y1="640" x2="252" y2="670" marker-end="url(#ah)"/>
+    <!-- bottom render -->
+    <line x1="1218" y1="626" x2="1252" y2="626" marker-end="url(#ah)"/>
+    <!-- 構造化JSON -> merged JSON -->
+    <path d="M410 578 L790 578 L790 614 L816 614" marker-end="url(#ah)"/>
+    <!-- JSON構造 -> merged JSON -->
+    <path d="M935 452 L935 586" marker-end="url(#ah)"/>
+    <!-- merged JSON -> レンダPG -->
+    <path d="M980 626 L1056 626" marker-end="url(#ah)"/>
+    <!-- Pdf/md -> レンダPG -->
+    <path d="M410 674 L1010 674 L1010 648 L1056 648" marker-end="url(#ah)"/>
+  </g>
+
+  <!-- knowledge retrieval (bi-directional) -->
+  <line x1="560" y1="212" x2="715" y2="378" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" marker-start="url(#ahk)" marker-end="url(#ahk)"/>
+  <rect x="590" y="283" width="100" height="26" rx="13" fill="#E1F5EE" stroke="#1D9E75" stroke-width="1"/>
+  <text x="640" y="300" font-size="13" text-anchor="middle" fill="#0F6E56">ナレッジ検索</text>
+
+  <!-- ============ INPUT FILES (teal, wavy bottom) ============ -->
+  <g stroke="#2BB592" stroke-width="1.5">
+    <path d="M66 120 L204 120 Q210 120 210 126 L210 182 Q184.5 192 159 184 Q135 176 109.5 184 Q84 192 60 182 L60 126 Q60 120 66 120 Z" fill="#E4F4EE"/>
+    <path d="M66 380 L204 380 Q210 380 210 386 L210 442 Q184.5 452 159 444 Q135 436 109.5 444 Q84 452 60 442 L60 386 Q60 380 66 380 Z" fill="#E4F4EE"/>
+    <path d="M66 590 L204 590 Q210 590 210 596 L210 652 Q184.5 662 159 654 Q135 646 109.5 654 Q84 662 60 652 L60 596 Q60 590 66 590 Z" fill="#E4F4EE"/>
+  </g>
+  <g font-size="16" text-anchor="middle" fill="#0F6E56">
+    <text x="135" y="161">参考書類</text>
+    <text x="135" y="421">COBOLリスト</text>
+    <text x="135" y="631">既存設計書</text>
+  </g>
+
+  <!-- ============ PROGRAMS (blue) ============ -->
+  <g fill="#E8F2FC" stroke="#5BA0E0" stroke-width="1.5">
+    <rect x="260" y="120" width="150" height="72" rx="8"/>
+    <rect x="260" y="380" width="150" height="72" rx="8"/>
+    <rect x="660" y="380" width="150" height="72" rx="8"/>
+    <rect x="1060" y="380" width="150" height="72" rx="8"/>
+    <rect x="1060" y="590" width="150" height="72" rx="8"/>
+  </g>
+  <g font-size="15" text-anchor="middle" fill="#0C447C">
+    <text x="335" y="150">Vector Database</text>
+    <text x="335" y="171">変換PG</text>
+    <text x="335" y="421">XML解析PG</text>
+    <text x="735" y="411">仕様書</text>
+    <text x="735" y="432">解析PG</text>
+    <text x="1135" y="409">PGM仕様書</text>
+    <text x="1135" y="430">レンダリング</text>
+    <text x="1135" y="619">上位設計書</text>
+    <text x="1135" y="640">レンダリング</text>
+  </g>
+
+  <!-- ============ INTERNAL REPRESENTATIONS (dashed) ============ -->
+  <g fill="#F4F3EF" stroke="#9C9A92" stroke-width="1.5" stroke-dasharray="6 4">
+    <rect x="460" y="380" width="150" height="72" rx="8"/>
+    <rect x="860" y="380" width="150" height="72" rx="8"/>
+  </g>
+  <g font-size="15" text-anchor="middle" fill="#5F5E5A">
+    <text x="535" y="421">XML構造</text>
+    <text x="935" y="421">JSON構造</text>
+  </g>
+
+  <!-- ============ DATA / FILES (teal, plain) ============ -->
+  <ellipse cx="535" cy="132" rx="65" ry="13" fill="#E4F4EE" stroke="#2BB592" stroke-width="1.5"/>
+  <path d="M470 132 L470 188 A65 13 0 0 0 600 188 L600 132" fill="#E4F4EE" stroke="#2BB592" stroke-width="1.5"/>
+  <ellipse cx="535" cy="132" rx="65" ry="13" fill="#E4F4EE" stroke="#2BB592" stroke-width="1.5"/>
+  <text x="535" y="170" font-size="17" font-weight="500" text-anchor="middle" fill="#0F6E56">VDB</text>
+
+  <g fill="#E4F4EE" stroke="#2BB592" stroke-width="1.5">
+    <rect x="260" y="550" width="150" height="56" rx="8"/>
+    <rect x="260" y="646" width="150" height="56" rx="8"/>
+  </g>
+  <g font-size="15" text-anchor="middle" fill="#0F6E56">
+    <text x="335" y="583">構造化JSON</text>
+    <text x="335" y="679">PDF / MD</text>
+  </g>
+
+  <!-- merged JSON (green) -->
+  <rect x="820" y="590" width="160" height="72" rx="8" fill="#E4F4EE" stroke="#2BB592" stroke-width="1.5"/>
+  <text x="900" y="631" font-size="16" font-weight="500" text-anchor="middle" fill="#0F6E56">Merged JSON</text>
+
+  <!-- ============ OUTPUTS (highlighted blue) ============ -->
+  <g fill="#BCD9F5" stroke="#2E7BC4" stroke-width="2">
+    <rect x="1260" y="380" width="150" height="72" rx="8"/>
+    <rect x="1260" y="590" width="150" height="72" rx="8"/>
+  </g>
+  <g font-size="16" font-weight="700" text-anchor="middle" fill="#0C447C">
+    <text x="1335" y="421">PGM仕様書</text>
+    <text x="1335" y="631">上位設計書</text>
+  </g>
+
+  <!-- ============ LEGEND ============ -->
+  <text x="60" y="772" font-size="16" font-weight="700" fill="#2C2C2A">【凡例】</text>
+  <g stroke-width="1.5">
+    <path d="M226 758 L292 758 Q296 758 296 762 L296 784 Q282 791 268 786 Q256 782 242 786 Q230 791 222 784 L222 762 Q222 758 226 758 Z" fill="#E4F4EE" stroke="#2BB592"/>
+    <text x="306" y="778" font-size="15" fill="#2C2C2A">入力ファイル（四角波形）</text>
+
+    <rect x="560" y="756" width="74" height="32" rx="7" fill="#E8F2FC" stroke="#5BA0E0"/>
+    <text x="644" y="778" font-size="15" fill="#2C2C2A">プログラム / PG（実線四角）</text>
+
+    <rect x="940" y="756" width="74" height="32" rx="7" fill="#F4F3EF" stroke="#9C9A92" stroke-dasharray="6 4"/>
+    <text x="1024" y="778" font-size="15" fill="#2C2C2A">内部表現（破線四角）</text>
+  </g>
+</svg>
